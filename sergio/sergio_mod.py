@@ -15,12 +15,13 @@ class Sergio:
                  decays,
                  kout=None,
                  kdown=None,
+                 interv_factor=0.5,  # >>> added this, for kdown only
                  dynamics = False,
                  sampling_state = 10,
                  tol = 1e-3,
                  window_length = 100,
                  dt = 0.01,
-                 optimize_sampling = False,
+                 optimize_sampling = True,  # default False >>>
                  safety_steps=0,
                  bifurcation_matrix = None,
                  noise_params_splice = None,
@@ -80,6 +81,7 @@ class Sergio:
         if kdown is None:
             kdown = np.zeros(number_genes).astype(bool)
         self.kdown = kdown
+        self.interv_factor=interv_factor
 
         ############
         # This graph stores for each vertex: parameters(interaction
@@ -302,6 +304,7 @@ class Sergio:
         """
 
         currGenes = self.level2verts_[level]
+        target_idx = 0  # hacky yes I know
         for g in currGenes:
             gID = g[0].ID
 
@@ -310,7 +313,11 @@ class Sergio:
                 assert not self.kdown[gID], "Cannot knockout and knockdown the same gene"
                 interv_factor = 0.0
             elif self.kdown[gID]:
-                interv_factor = 0.5
+                # >>> customize
+                #interv_factor = 0.5
+                interv_factor = self.interv_factor[target_idx]
+                target_idx += 1
+                # <<<
             else:
                 interv_factor = 1.0
 

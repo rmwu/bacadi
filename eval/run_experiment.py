@@ -11,6 +11,7 @@ os.environ['JAX_ENABLE_X64'] = 'True'  # float64 precision
 
 import warnings
 
+# ??
 warnings.filterwarnings("ignore", message="CUDA_ERROR_NO_DEVICE")
 warnings.filterwarnings("ignore", message="No GPU/TPU found")
 

@@ -17,7 +17,7 @@ def expand_by(arr, n):
     Args:
         arr: shape [...]
         n (int)
-    
+
     Returns:
         arr of shape [..., 1, ..., 1] with `n` ones
     """
@@ -31,14 +31,14 @@ def sel(mat, mask):
 
     Args:
         mat: [N, d]
-        mask: [d, ]  boolean 
+        mask: [d, ]  boolean
 
     Returns:
         [N, d] with columns of `mat` with `mask` == 1 non-zero a
         and the columns with `mask` == 0 are zero
 
-    Example: 
-        mat 
+    Example:
+        mat
         1 2 3
         4 5 6
         7 8 9
@@ -60,14 +60,14 @@ def leftsel(mat, mask, maskval=0.0):
 
     Args:
         mat: [N, d]
-        mask: [d, ]  boolean 
+        mask: [d, ]  boolean
 
     Returns:
         [N, d] [N, d] with columns of `mat` with `mask` == 1 non-zero a
         and pushed leftmost; the columns with `mask` == 0 are zero
 
-    Example: 
-        mat 
+    Example:
+        mat
         1 2 3
         4 5 6
         7 8 9
@@ -98,7 +98,7 @@ def mask_topk(x, topkk):
 
     Returns:
         array of shape [topk, ]
-        
+
     """
     mask = x.argsort()[-topkk:][::-1]
     return mask
@@ -107,7 +107,7 @@ def mask_topk(x, topkk):
 @jit
 def bit2id(b):
     """
-    Converts a batch of binary (adjacency) matrices into 
+    Converts a batch of binary (adjacency) matrices into
     low-memory bit representation to facilitate handling of
     larger problems.
     See `id2bit` for counterpart.
@@ -126,7 +126,7 @@ def bit2id(b):
 @functools.partial(jit, static_argnums=(1,))
 def id2bit(id, d):
     """
-    Converts a batch of bit representations into 
+    Converts a batch of bit representations into
     their corresponding binary (adjacency matrices).
     See `bit2id` for counterpart.
 
@@ -157,19 +157,19 @@ def joint_dist_to_marginal(dist):
     Drops all but the particles_z and log_probs
     of the joint distribution tuple
     """
-    return (dist[0], dist[-1]) 
+    return (dist[0], dist[-1])
 
 
 def squared_norm_pytree(x, y):
     """Computes squared euclidean norm between two pytrees
-    
+
     Args:
-        x:  PyTree 
-        y:  PyTree 
+        x:  PyTree
+        y:  PyTree
 
     Returns:
-        shape [] 
-    """ 
+        shape []
+    """
 
     diff = tree_multimap(jnp.subtract, x, y)
     squared_norm_ind = tree_map(lambda leaf: jnp.square(leaf).sum(), diff)
@@ -203,7 +203,7 @@ def pairwise_structural_hamming_distance(*, x, y, axis=None, atol=1e-8):
 
     # ignore double edges
     pw_diff = jnp.where(pw_diff > 1, 1, pw_diff)
-    shd = jnp.sum(pw_diff, axis=(2, 3)) / 2 
+    shd = jnp.sum(pw_diff, axis=(2, 3)) / 2
 
     return shd
 
@@ -213,10 +213,10 @@ def expected_graph(dist, n_vars):
 
     # P(G_ij = 1) = sum_G w_G 1[G = G] in log space
     log_p, log_p_sign = logsumexp(
-        log_weights[..., jnp.newaxis, jnp.newaxis], 
-        b=particles.astype(log_weights.dtype), 
+        log_weights[..., jnp.newaxis, jnp.newaxis],
+        b=particles.astype(log_weights.dtype),
         axis=0, return_sign=True)
-    
+
     p_edge = log_p_sign * jnp.exp(log_p)
     return p_edge
 
@@ -225,9 +225,9 @@ def expected_interv(dist):
 
     # P(I_ij = 1) = sum_I w_I 1[I = I] in log space
     log_p, log_p_sign = logsumexp(
-        log_weights[..., jnp.newaxis, jnp.newaxis], 
-        b=particles.astype(log_weights.dtype), 
+        log_weights[..., jnp.newaxis, jnp.newaxis],
+        b=particles.astype(log_weights.dtype),
         axis=0, return_sign=True)
-    
+
     p_edge = log_p_sign * jnp.exp(log_p)
     return p_edge

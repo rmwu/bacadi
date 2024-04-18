@@ -3,7 +3,7 @@ import warnings
 from jax.scipy.special import logsumexp
 from jax.scipy.stats import beta as jax_beta
 from jax import lax
-import tqdm
+from tqdm import tqdm
 
 import jax.numpy as jnp
 from jax import jit, vmap, random, grad
@@ -22,7 +22,7 @@ class BaCaDIJoint(BaCaDIBase):
     This class implements BaCaDI: Bayesian Causal Discovery with Unknown Interventions (Hägele et al., 2021)
     instantiated using Stein Variational Gradient Descent (SVGD) (Liu and Wang, 2016) as the underlying inference method.
 
-    This class implements //joint// inference of the posterior p(G, theta, I | D) 
+    This class implements //joint// inference of the posterior p(G, theta, I | D)
 
     Args:
         kernel: string that specifies which kernel to use. one of (`frob-joint-add`, `frob-joint-mul`)
@@ -39,11 +39,11 @@ class BaCaDIJoint(BaCaDIBase):
         grad_estimator_z (str): gradient estimator d/dZ of expectation; choices: `score` or `reparam`
         score_function_baseline (float): weight of addition in score function baseline; == 0.0 corresponds to not using a baseline
         latent_prior_std (float): standard deviation of Gaussian prior over Z; defaults to 1/sqrt(k)
-        model_param (dict): dictionary specifying model parameters. 
+        model_param (dict): dictionary specifying model parameters.
         random_state: prng key
         n_steps (int): number of steps to iterate SVGD
         n_particles (int): number of particles for SVGD
-        callback_every (int): if == 0, `callback` is never called. 
+        callback_every (int): if == 0, `callback` is never called.
         callback (func): function to be called every `callback_every` steps of SVGD.
     """
 
@@ -198,7 +198,7 @@ class BaCaDIJoint(BaCaDIBase):
             z: batch of latent tensors [n_particles, d, k, 2]
             theta: batch of parameters PyTree with leading dim `n_particles`
             gamma: batch of tensors [n_particles, n_env-1, d]
-        
+
         """
         # default full rank
         if n_dim is None:
@@ -242,10 +242,10 @@ class BaCaDIJoint(BaCaDIBase):
 
         Args:
             x_latent: latent tensor [d, k, 2]
-            x_theta: parameter PyTree 
+            x_theta: parameter PyTree
             x_interv: latent tensor [n_env-1, d]
             y_latent: latent tensor [d, k, 2]
-            y_theta: parameter PyTree 
+            y_theta: parameter PyTree
             y_interv: latent tensor [n_env-1, d]
             h_latent (float): kernel bandwidth for Z term
             h_theta (float): kernel bandwidth for theta term
@@ -291,12 +291,12 @@ class BaCaDIJoint(BaCaDIBase):
             x_latents, x_thetas, x_interv:  latent tensor, PyTree and latent tensor
                                             with leading dimension `n_particles`
             y_latents, y_thetas, y_interv:  single latent tensor, PyTree and latent tensor
-            
+
             h_latent, h_theta, h_interv (floats): kernel bandwidths
 
         Returns:
             batch of gradients for latent tensors Z [n_particles, d, k, 2]
-        
+
         """
         grad_kernel_z = grad(self.f_kernel, 0)
         return vmap(grad_kernel_z,
@@ -341,21 +341,21 @@ class BaCaDIJoint(BaCaDIBase):
     def z_update(self, single_z, single_theta, single_gamma, kxx, z, theta,
                  gamma, grad_log_prob_z, h_latent, h_theta, h_interv):
         """
-        Computes SVGD update for `single_z` of a (single_z, single_theta) tuple given the kernel values 
-        `kxx` and the d/dz gradients of the target density for each of the available particles 
+        Computes SVGD update for `single_z` of a (single_z, single_theta) tuple given the kernel values
+        `kxx` and the d/dz gradients of the target density for each of the available particles
 
         Args:
             single_z: single latent tensor Z [d, k, 2], which is the Z particle being updated
             single_theta: single parameter PyTree, the theta particle of the Z particle being updated
             single_gamma: single gamma tensor [n_env, d], which is the gamma particle being updated
             kxx: pairwise kernel values for all particles [n_particles, n_particles]
-            z:  all latent tensor Z particles [n_particles, d, k, 2] 
-            theta: all theta particles as PyTree with leading dim `n_particles` 
-            z:  all latent gamma particles [n_particles, n_env-1, d] 
-            grad_log_prob_z: gradients of all Z particles w.r.t target density  [n_particles, d, k, 2]  
+            z:  all latent tensor Z particles [n_particles, d, k, 2]
+            theta: all theta particles as PyTree with leading dim `n_particles`
+            z:  all latent gamma particles [n_particles, n_env-1, d]
+            grad_log_prob_z: gradients of all Z particles w.r.t target density  [n_particles, d, k, 2]
 
         Returns
-            transform vector of shape [d, k, 2] for the Z particle being updated        
+            transform vector of shape [d, k, 2] for the Z particle being updated
         """
 
         # compute terms in sum
@@ -381,20 +381,20 @@ class BaCaDIJoint(BaCaDIBase):
         """
         Computes SVGD update for `single_gamma` of a (single_z, single_theta, single_gamma)
         tuple given the kernel values  `kxx` and the d/dz gradients of the target density
-        for each of the available particles 
+        for each of the available particles
 
         Args:
             single_z: single latent tensor Z [d, k, 2], which is the Z particle being updated
             single_theta: single parameter PyTree, the theta particle of the Z particle being updated
             single_gamma: single gamma tensor [n_env, d], which is the gamma particle being updated
             kxx: pairwise kernel values for all particles [n_particles, n_particles]
-            z:  all latent tensor Z particles [n_particles, d, k, 2] 
-            theta: all theta particles as PyTree with leading dim `n_particles` 
-            z:  all latent gamma particles [n_particles, n_env-1, d] 
-            grad_log_prob_gamma: gradients of all gamma particles w.r.t target density  [n_particles, n_env-1, d]  
+            z:  all latent tensor Z particles [n_particles, d, k, 2]
+            theta: all theta particles as PyTree with leading dim `n_particles`
+            z:  all latent gamma particles [n_particles, n_env-1, d]
+            grad_log_prob_gamma: gradients of all gamma particles w.r.t target density  [n_particles, n_env-1, d]
 
         Returns
-            transform vector of shape [n_env-1, d] for the gamma particle being updated        
+            transform vector of shape [n_env-1, d] for the gamma particle being updated
         """
 
         # compute terms in sum
@@ -418,20 +418,20 @@ class BaCaDIJoint(BaCaDIBase):
     def theta_update(self, single_z, single_theta, single_gamma, kxx, z, theta,
                      gamma, grad_log_prob_theta, h_latent, h_theta, h_interv):
         """
-        Computes SVGD update for `single_theta` of a (single_z, single_theta) tuple given the kernel values 
-        `kxx` and the d/dtheta gradients of the target density for each of the available particles 
+        Computes SVGD update for `single_theta` of a (single_z, single_theta) tuple given the kernel values
+        `kxx` and the d/dtheta gradients of the target density for each of the available particles
 
         Args:
             single_z: single latent tensor Z [d, k, 2], the Z particle of the theta particle being updated
             single_theta: single parameter PyTree being updated
-            kxx: pairwise kernel values for all particles [n_particles, n_particles]  
-            z:  all latent tensor Z particles [n_particles, d, k, 2] 
-            theta: all theta particles as PyTree with leading dim `n_particles` 
-            grad_log_prob_theta: gradients of all theta particles w.r.t target density 
+            kxx: pairwise kernel values for all particles [n_particles, n_particles]
+            z:  all latent tensor Z particles [n_particles, d, k, 2]
+            theta: all theta particles as PyTree with leading dim `n_particles`
+            grad_log_prob_theta: gradients of all theta particles w.r.t target density
                 PyTree with leading dim `n_particles
 
         Returns:
-            transform vector PyTree with leading dim `n_particles` for the theta particle being updated   
+            transform vector PyTree with leading dim `n_particles` for the theta particle being updated
         """
 
         # compute terms in sum
@@ -463,7 +463,7 @@ class BaCaDIJoint(BaCaDIBase):
                   sf_baseline):
         """
         Performs a single SVGD step, updating Z, theta, gamma jointly.
-        
+
         Args:
             opt_state_z: optimizer state for latent Z particles; contains [n_particles, d, k, 2]
             opt_state_theta: optimizer state for theta particles; contains PyTree with `n_particles` leading dim
@@ -561,18 +561,18 @@ class BaCaDIJoint(BaCaDIBase):
             data: collection of datasets we perform inference for [n_datasets, n_obs, d]
             n_steps (int): number of SVGD steps performed
             init_particles_z: batch of initialized latent tensor particles [n_particles, d, k, 2]
-            init_particles_theta:  batch of parameters PyTree (i.e. for a general parameter set shape) 
+            init_particles_theta:  batch of parameters PyTree (i.e. for a general parameter set shape)
                 with leading dimension `n_particles`
             init_particles_gamma: batch of initialized gamma tensor particles [n_particles, n_env-1, d]
             key: prng key
             callback: function to be called every `callback_every` steps of SVGD.
-            callback_every: if == 0, `callback` is never called. 
+            callback_every: if == 0, `callback` is never called.
 
-        Returns: 
+        Returns:
             `n_particles` samples that approximate the BaCaDI target density
             particles_z: [n_particles, d, k, 2]
             particles_theta: PyTree of parameters with leading dimension `n_particles`
-           
+
         """
         self.data = data
 
@@ -608,9 +608,11 @@ class BaCaDIJoint(BaCaDIBase):
         opt_state_theta = opt_init(theta)
         opt_state_gamma = opt_init(gamma)
         """Execute particle update steps for all particles in parallel using `vmap` functions"""
-        it = tqdm.tqdm(range(n_steps), desc='BaCaDI', disable=not self.verbose)
-        for t in it:
-
+        # >>> I can't be damned to find the right arg. their paper says 2000
+        # steps so I shall run this for 2000 steps
+        #for t in tqdm(range(n_steps), ncols=40):
+        for t in tqdm(range(2000), ncols=40):
+        # <<<
             # perform one SVGD step (compiled with @jit)
             opt_state_z, opt_state_theta, opt_state_gamma, key, sf_baseline = self.svgd_step(
                 opt_state_z, opt_state_theta, opt_state_gamma, key, t,
@@ -641,14 +643,14 @@ class BaCaDIJoint(BaCaDIBase):
 
     def particle_empirical(self):
         """
-        Returns the standardized form of a particle distribution 
-        represented by this fitted object. 
+        Returns the standardized form of a particle distribution
+        represented by this fitted object.
         Converts the batch z particles into the binary adjacency matrices
         (for alpha -> inf) and returns it with associated parameters and
         empirical log probabilities (here uniform) as a tuple.
 
         Returns:
-            tuple: 
+            tuple:
                 tuple[0] contains unique ids as by `bit2id`
                 tuple[1] contains thetas
                 tuple[2] contains intervention targets
@@ -671,13 +673,13 @@ class BaCaDIJoint(BaCaDIBase):
     def particle_mixture(self):
         """
         Returns the standardized form of a particle distribution weighted by
-        the likelihood represented by this fitted object. 
+        the likelihood represented by this fitted object.
         Converts the batch z particles into the binary adjacency matrices
         (for alpha -> inf) and returns it with associated parameters and
         empirical log probabilities as a tuple.
 
         Returns:
-            tuple: 
+            tuple:
                 tuple[0] contains unique ids as by `bit2id`
                 tuple[1] contains thetastuple[2] contains intervention targets
                 tuple[3] contains the empirical log probability
@@ -713,7 +715,7 @@ class BaCaDIJoint(BaCaDIBase):
 
         Returns:
             particles_z: (n_particles, n_vars, n_dim, 2)
-            particles_theta: PyTree with leading dim `n_particles` 
+            particles_theta: PyTree with leading dim `n_particles`
         """
         if self.particles_z is None:
             raise AttributeError(

@@ -35,8 +35,8 @@ if not os.path.exists(os.path.join(*STORE_ROOT)):
 
 
 Target = namedtuple('Target', (
-    #'passed_key',               # jax.random key passed _into_ the function generating this object
-    #'graph_model',
+    'passed_key',               # jax.random key passed _into_ the function generating this object
+    'graph_model',
     'n_vars',
     'n_observations',
     'n_ho_observations',
@@ -75,6 +75,7 @@ def save_pickle(obj, relpath):
     fp_graph = os.path.join(folder, f"DAG{seed}.npy")
     np.save(fp_graph, graph)
     # save datasets, observational and interventional
+    # data_interv already contains all of data
     data = np.transpose(obj["x"], axes=[0,2,1])  # (cell type, cells, genes)
     data_interv = np.transpose(obj["x_interv_data"], axes=[0,2,1])
     #print(data.shape, data_interv.shape)
@@ -82,13 +83,14 @@ def save_pickle(obj, relpath):
     num_celltypes, num_cells_obs, num_genes = data.shape
     _, num_cells_int, _ = data_interv.shape
     # reshape to (num_cells, genes)
+    # >>> DO NOT DO THIS
     data = data.reshape(-1, num_genes)
     data_interv = data_interv.reshape(-1, num_genes)
     fp_data = os.path.join(folder, f"data{seed}.npy")
     fp_data_interv = os.path.join(folder, f"data_interv{seed}.npy")
     # >>>
-    np.save(fp_data, data)
-    np.save(fp_data_interv, data_interv)
+    #np.save(fp_data, data)
+    #np.save(fp_data_interv, data_interv)
     # <<<
     # regimes and interventions
     targets = obj["interv_targets"]
@@ -335,6 +337,7 @@ def make_sergio(n_vars,
     x = jnp.array(data['x_obs'])
     x_interv_obs = x  # jnp.array(data['x_obs'][-n_obs:])
     x_interv = data["x_int"]
+    # pickle will transpose. currently (cell type, gene, obs)
     x_interv_data = jnp.concatenate([x_interv_obs, x_interv], axis=-1)
     envs = jnp.concatenate([data["obs_envs"],
                             data["int_envs"]], axis=-1).astype(int)
@@ -387,117 +390,4 @@ def make_sergio(n_vars,
         gt_posterior_obs=None,
         gt_posterior_interv=None)
     return target
-
-
-def make_kernel(*, kernel, **kwargs):
-    """
-    Instantiates a kernel model
-
-    Args:
-        kernel: specifier (`frob-joint-add`, `frob-joint-mul`, `frob`)
-        kwargs: dict
-            must contain the key `h_latent`. for a joint kernel, additionally `h_theta`.
-
-    Returns:
-        `GraphDistribution`
-    """
-    ## Joint Kernels
-    if kernel == 'frob-joint-add':
-        kernel_ = JointAdditiveFrobeniusSEKernel(h_latent=kwargs['h_latent'],
-                                                h_theta=kwargs['h_theta'])
-
-    elif kernel == 'frob-joint-mul':
-        kernel_ = JointMultiplicativeFrobeniusSEKernel(
-            h_latent=kwargs['h_latent'], h_theta=kwargs['h_theta'])
-    ## Joint Kernel with Interv
-    elif kernel == 'frob-joint-interv-add':
-        kernel_ = JointAdditiveInterv(h_latent=kwargs['h_latent'],
-                                     h_theta=kwargs['h_theta'],
-                                     h_interv=kwargs['h_interv'])
-    ## Maginal Kernel with Interv
-    elif kernel == 'frob-interv-add':
-        kernel_ = MarginalAdditiveInterv(h_latent=kwargs['h_latent'],
-                                        h_interv=kwargs['h_interv'])
-    # Marginal
-    elif kernel == 'frob':
-        kernel_ = FrobeniusSquaredExponentialKernel(h=kwargs['h_latent'])
-
-    return kernel_
-
-
-def make_inference_model(*, inference_str, n_vars, **kwargs):
-    """
-    Instantiates inference model
-
-    Args:
-        inference_str: specifier (`lingauss`, `fcgauss`, `bge`, `newbge`)
-        n_vars: number of variables
-        kwargs: dict
-            for `lingauss`: must contain (`obs_noise`, `mean_edge`, `sig_edge`, `init_sig_edge`)
-            for `bge`: must contain (`alpha_mu`)
-            for `fcgauss`: must contain (`obs_noise`, `sig_param`, `hidden_layers`)
-
-    Returns:
-        Inference model `BasicModel`,
-        either `LinearGaussianJAX`, `DenseNonlinearGaussianJAX`, `BGeJax` or `NewBGe`
-    """
-
-    if inference_str == 'lingauss':
-        inference_model = LinearGaussianJAX(
-            obs_noise=kwargs['obs_noise'],
-            mean_edge=kwargs['mean_edge'],
-            sig_edge=kwargs['sig_edge'],
-            init_sig_edge=kwargs['init_sig_edge'],
-            interv_prior_mean=kwargs.get('interv_prior_mean') or 0.,
-            interv_prior_std=kwargs.get('interv_prior_std') or 10.,
-            interv_mean=kwargs.get('interv_mean'),
-            interv_noise=kwargs.get('interv_noise'))
-
-    elif inference_str == 'bge':
-        alpha_lambd = kwargs[
-            'alpha_lambd'] if 'alpha_lambd' in kwargs else n_vars + 2
-        inference_model = BGeJAX(n_vars=n_vars,
-                                 mean_obs=jnp.zeros(n_vars),
-                                 alpha_lambd=alpha_lambd,
-                                 alpha_mu=kwargs['alpha_mu'],
-                                 interv_mean=kwargs.get('interv_mean'),
-                                 interv_noise=kwargs.get('interv_noise'))
-
-    elif inference_str == 'newbge':
-        alpha_lambd = kwargs[
-            'alpha_lambd'] if 'alpha_lambd' in kwargs else n_vars + 2
-        inference_model = NewBGe(n_vars=n_vars,
-                                 mean_obs=jnp.zeros(n_vars),
-                                 alpha_lambd=alpha_lambd,
-                                 alpha_mu=kwargs['alpha_mu'],
-                                 interv_mean=kwargs.get('interv_mean'),
-                                 interv_noise=kwargs.get('interv_noise'))
-
-    elif inference_str == 'fcgauss':
-        inference_model = DenseNonlinearGaussianJAX(
-            obs_noise=kwargs['obs_noise'],
-            sig_param=kwargs['sig_param'],
-            init_sig_param=kwargs['init_sig_param'],
-            hidden_layers=kwargs['hidden_layers'],
-            interv_mean=kwargs.get('interv_mean'),
-            interv_noise=kwargs.get('interv_noise'),
-            init=kwargs.get('init') or 'xavier_normal',
-            interv_prior_mean=kwargs.get('interv_prior_mean') or 0.,
-            interv_prior_std=kwargs.get('interv_prior_std') or 10.,
-            activation=kwargs.get('activation') or 'sigmoid',
-            bias=kwargs.get('bias') or True)
-    elif inference_str == 'sobolevgauss':
-        inference_model = SobolevGaussianJAX(
-            obs_noise=kwargs['obs_noise'],
-            n_vars=n_vars,
-            n_exp=kwargs.get('n_exp') or 10,
-            mean_param=kwargs.get('mean_param') or 0.,
-            sig_param=kwargs['sig_param'],
-            init_sig_param=kwargs['sig_param'],
-            init=kwargs.get('init') or 'normal')
-    else:
-        raise NotImplementedError(
-            'Inference with {} not implemented.'.format(inference_str))
-
-    return inference_model
 

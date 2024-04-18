@@ -16,7 +16,7 @@ from bacadi.utils.func import bit2id, expand_by, id2bit
 
 class BaCaDIBase(DiBS):
     """
-    This class implements the base class for BaCaDI, generalizing the DiBS model 
+    This class implements the base class for BaCaDI, generalizing the DiBS model
 
     Args:
         kernel: string that specifies which kernel to use. one of (`frob-joint-add`, `frob-joint-mul`)
@@ -33,11 +33,11 @@ class BaCaDIBase(DiBS):
         grad_estimator_z (str): gradient estimator d/dZ of expectation; choices: `score` or `reparam`
         score_function_baseline (float): weight of addition in score function baseline; == 0.0 corresponds to not using a baseline
         latent_prior_std (float): standard deviation of Gaussian prior over Z; defaults to 1/sqrt(k)
-        model_param (dict): dictionary specifying model parameters. 
+        model_param (dict): dictionary specifying model parameters.
         random_state: prng key
         n_steps (int): number of steps to iterate SVGD
         n_particles (int): number of particles for SVGD
-        callback_every (int): if == 0, `callback` is never called. 
+        callback_every (int): if == 0, `callback` is never called.
         callback (func): function to be called every `callback_every` steps of SVGD.
     """
 
@@ -104,12 +104,12 @@ class BaCaDIBase(DiBS):
 
     def interv_probs(self, gamma, t):
         """
-        Edge probabilities encoded by latent representation 
+        Edge probabilities encoded by latent representation
 
         Args:
             gamma: scores [..., n_env - 1, d]
             t: step
-        
+
         Returns:
             intervention probabilities of shape [..., n_env - 1, d]
         """
@@ -124,7 +124,7 @@ class BaCaDIBase(DiBS):
             p: matrix of probabilities [n_env-1, d]
             n_samples: number of samples
             subk: rng key
-        
+
         Returns:
             an array of matrices sampled according to `p` of shape [n_samples, n_env-1, d]
         """
@@ -136,14 +136,14 @@ class BaCaDIBase(DiBS):
         return I_samples
 
     def particle_to_soft_interv(self, gamma, eps, t):
-        """ 
+        """
         Gumbel-softmax / concrete distribution using Logistic(0,1) samples `eps`
 
         Args:
             gamma: a single latent tensor Z of shape [n_env-1, d]
-            eps: random iid Logistic(0,1) noise  of shape [n_env-1, d] 
+            eps: random iid Logistic(0,1) noise  of shape [n_env-1, d]
             t: step
-        
+
         Returns:
             Gumbel-softmax sample of intervention targets [n_env-1, d]
         """
@@ -192,7 +192,7 @@ class BaCaDIBase(DiBS):
             single_theta: single parameter PyTree
             single_w: single graph [d,d]
             interv_targets: soft mask for interventions [n_env-1, d]
-        
+
         Returns:
             log p(D_k, | single_theta, G, I_k)
         """
@@ -219,7 +219,7 @@ class BaCaDIBase(DiBS):
             single_theta: single parameter PyTree
             single_w: single graph [d,d]
             single_interv_targets: boolean mask for interventions [n_obs, d]
-        
+
         Returns:
             log p(D_k, | single_theta, G, I_k)
         """
@@ -237,13 +237,13 @@ class BaCaDIBase(DiBS):
         using a soft intervention matrix.
         Uses the data passed to the `sample_particles` method
         and stored in `self`.
-        
+
         Args:
             single_w: single graph [d, d]
             single_theta: single parameter PyTree
             interv_targets: soft mask for interventions [n_env-1, d]
             rng: [1, ]
-        
+
         Returns:
             log p(theta, D | G, I): [1,]
         """
@@ -275,7 +275,7 @@ class BaCaDIBase(DiBS):
     def log_joint_prob_soft_interv(self, single_g, single_theta, single_gamma,
                                    eps, t, subk):
         """
-        This is the composition of 
+        This is the composition of
             log p(theta, D | G, I)
         and
             G(gamma, U)  (Gumbel-softmax graph sample given gamma)
@@ -284,8 +284,8 @@ class BaCaDIBase(DiBS):
             single_z: single latent tensor [d, k, 2]
             single_theta: single parameter PyTree
             single_gamma: single gamma tensor [n_env-1, d]
-            eps: i.i.d Logistic noise of shape [n_env-1, d] 
-            t: step 
+            eps: i.i.d Logistic noise of shape [n_env-1, d]
+            t: step
             subk: rng key
 
         Returns:
@@ -313,7 +313,7 @@ class BaCaDIBase(DiBS):
             single_theta: single parameter PyTree
             interv_targets: [n_env - 1, d]
             rng: [1, ]
-        
+
         Returns:
             log p(theta, D | G, I): [1,]
         """
@@ -346,8 +346,8 @@ class BaCaDIBase(DiBS):
     def eltwise_grad_theta_likelihood(self, zs, thetas, gammas, t, subk):
         """
         Computes batch of estimators for the score
-            
-            d/dtheta log p(theta, D| Z, gamma) 
+
+            d/dtheta log p(theta, D| Z, gamma)
 
         (i.e. w.r.t the conditional distribution parameters)
 
@@ -360,7 +360,7 @@ class BaCaDIBase(DiBS):
             gammas: [n_particles, n_env-1, d]
 
         Returns:
-            batch of gradients in form of PyTree with `n_particles` as leading dim     
+            batch of gradients in form of PyTree with `n_particles` as leading dim
 
         """
         return vmap(self.grad_theta_likelihood, (0, 0, 0, None, 0),
@@ -369,9 +369,9 @@ class BaCaDIBase(DiBS):
     def grad_theta_likelihood(self, single_z, single_theta, single_gamma, t,
                               subk):
         """
-        Computes Monte Carlo estimator for the score 
-            
-            d/dtheta log p(theta, D | Z) 
+        Computes Monte Carlo estimator for the score
+
+            d/dtheta log p(theta, D | Z)
 
         Uses hard samples of G; reparameterization like for d/dZ is also possible
         Uses same G samples for expectations in numerator and denominator.
@@ -448,7 +448,7 @@ class BaCaDIBase(DiBS):
         return stable_grad
 
     """
-    Estimators for score d/dZ log p(theta, D | Z)   
+    Estimators for score d/dZ log p(theta, D | Z)
     (i.e. w.r.t the latent embeddings Z for graph G)
     """
 
@@ -456,8 +456,8 @@ class BaCaDIBase(DiBS):
                                   subkeys):
         """
         Computes batch of estimators for score
-            
-            d/dZ log p(theta, D | Z) 
+
+            d/dZ log p(theta, D | Z)
 
         Selects corresponding estimator used for the term `d/dZ E_p(G|Z)[ p(theta, D | G) ]`
         and executes it in batch.
@@ -468,7 +468,7 @@ class BaCaDIBase(DiBS):
             baselines: array of score function baseline values of shape [n_particles, ]
 
         Returns:
-            tuple: batch of (gradient estimates, baselines) of shapes [n_particles, d, k, 2], [n_particles, ]        
+            tuple: batch of (gradient estimates, baselines) of shapes [n_particles, d, k, 2], [n_particles, ]
         """
 
         # select the chosen gradient estimator
@@ -498,8 +498,8 @@ class BaCaDIBase(DiBS):
         """
         Reparameterization estimator for the score
 
-            d/dZ log p(theta, D | Z) 
-            
+            d/dZ log p(theta, D | Z)
+
         Using the Gumbel-softmax / concrete distribution reparameterization trick.
         Uses same G samples for expectations in numerator and denominator.
 
@@ -571,7 +571,7 @@ class BaCaDIBase(DiBS):
         return stable_grad, single_sf_baseline
 
     """
-    Estimators for score d/dgamma log p(theta, D | Z, gamma)   
+    Estimators for score d/dgamma log p(theta, D | Z, gamma)
     (i.e. w.r.t the embeddings gamma the interventions I)
     """
 
@@ -586,8 +586,8 @@ class BaCaDIBase(DiBS):
         """
         Reparameterization estimator for the score
 
-            d/dgamma log p(theta, D | Z, gamma) 
-            
+            d/dgamma log p(theta, D | Z, gamma)
+
         Using the Gumbel-softmax / concrete distribution reparameterization trick.
         Uses same I samples for expectations in numerator and denominator.
 
@@ -686,16 +686,16 @@ class BaCaDIBase(DiBS):
         return log_lik
 
     def regularizer_gamma(self, single_gamma, eps, t):
-        """ 
-        Evaluates Lasso regularizer using 
-        Gumbel-softmax instead of Bernoulli samples. 
+        """
+        Evaluates Lasso regularizer using
+        Gumbel-softmax instead of Bernoulli samples.
         The regularizer enforces only `self.interv_per_env` intervention target per environment.
 
         Args:
             single_gamma: single latent tensor [n_env-1, d]
             single_eps: i.i.d. Logistic noise of shape [n_env-1, d] for Gumbel-softmax
             t: step
-        
+
         Returns:
             constraint value of shape [1,]
         """
@@ -711,16 +711,16 @@ class BaCaDIBase(DiBS):
         Reparameterization estimator for the gradient
 
            d/dgamma E_p(I|gamma) [regularizer(I)]
-            
+
         Using the Gumbel-softmax / concrete distribution reparameterization trick.
 
         Args:
-            z: single latent tensor [n_env-1, d]                
-            key: rng key [1,]    
+            z: single latent tensor [n_env-1, d]
+            key: rng key [1,]
             t: step
 
-        Returns         
-            gradient of constraint [n_env-1, d] 
+        Returns
+            gradient of constraint [n_env-1, d]
         """
         n_vars = single_gamma.shape[-1]
 
@@ -767,10 +767,10 @@ class BaCaDIBase(DiBS):
         Computes batch of estimators for the score
 
             d/dgamma log p(gamma)
-        
+
         where log p(gamma) = - beta(t) E_p(I|gamma) [regularizer(I)]
-                         + log f(gamma) 
-        
+                         + log f(gamma)
+
         and f(gamma) is an additional prior factor (still TODO)
 
         Args:

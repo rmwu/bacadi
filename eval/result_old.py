@@ -12,7 +12,7 @@ STORE_ROOT = ['results']
 def get_metrics(descr,
                 dist,
                 target,
-                args,
+                config,
                 bacadi=None,
                 use_cpdag=False,
                 final=False):
@@ -21,12 +21,68 @@ def get_metrics(descr,
 
     # get targets used for inference to get interventional cpdag
 
-    # I deleted the chunk that computes NLL and KL  because I do not care
-    # about them
+    # negll only for bacadi
+    if bacadi is not None:
+        # this is the default
+        if config.joint:
+            # evaluates log likelihood of all (G, theta) particles in batch on held-out data
+            eltwise_log_likelihood = jit(
+                vmap(
+                    lambda w_, theta_, x_:
+                    (bacadi.log_joint_likelihood(single_theta=theta_,
+                                               single_w=w_,
+                                               single_data=x_,
+                                               single_interv_targets=None,
+                                               envs=None)), (0, 0, None), 0))
+
+            eltwise_log_interv_likelihood = jit(
+                vmap(
+                    lambda w_, theta_, x_: (bacadi.log_joint_likelihood(
+                        single_theta=theta_,
+                        single_w=w_,
+                        single_data=x_,
+                        single_interv_targets=target.interv_targets_ho,
+                        envs=target.envs_ho)), (0, 0, None), 0))
+            negll_method = neg_ave_log_likelihood
+
+        # this is not the default
+        else:
+            # evaluates log likelihood of all (G, theta) particles in batch on held-out data
+            eltwise_log_likelihood = jit(
+                vmap(
+                    lambda w_, x_: (bacadi.log_marginal_prob(
+                        single_w=w_, data=x_, interv_targets=None, envs=None)),
+                    (0, None), 0))
+
+            eltwise_log_interv_likelihood = jit(
+                vmap(
+                    lambda w_, x_: (bacadi.log_marginal_prob(
+                        single_w=w_,
+                        data=x_,
+                        interv_targets=target.interv_targets_ho,
+                        envs=target.envs_ho)), (0, None), 0))
+
+            negll_method = neg_ave_log_marginal_likelihood
+        negll = negll_method(dist=dist,
+                             eltwise_log_target=eltwise_log_likelihood,
+                             x=target.x_ho,
+                             unknown_interv=config.infer_interv)
+        negll_interv = negll_method(
+            dist=dist,
+            eltwise_log_target=eltwise_log_interv_likelihood,
+            x=target.x_ho_interv_data,
+            unknown_interv=config.infer_interv)
+        metrics[descr + 'negll'] = negll
+        metrics[descr + 'negll_interv'] = negll_interv
 
     dist_marginal = joint_dist_to_marginal(dist) if len(dist) >= 3 else dist
 
-    if args.interv_data or args.infer_interv:
+    gt_posterior = target.gt_posterior_interv if config.interv_data else target.gt_posterior_obs
+    if gt_posterior is not None:
+        kl_div = kl_divergence(n_vars, dist_marginal,
+                            gt_posterior) if gt_posterior is not None else -1.
+        metrics[descr + 'kl_div'] = kl_div
+    if config.interv_data or config.infer_interv:
         interv_targets_train = target.interv_targets
         if (interv_targets_train[0] == 0).all():
             interv_targets_train = interv_targets_train[1:]
@@ -61,7 +117,7 @@ def get_metrics(descr,
     metrics[descr + 'auroc'] = thresh_metr['roc_auc']
     metrics[descr + 'auprc'] = thresh_metr['prc_auc']
     metrics[descr + 'avgprec'] = thresh_metr['ave_prec']
-    if args.infer_interv:
+    if config.infer_interv:
         interv_targets = target.interv_targets
         if (interv_targets[0] == 0).all():
             interv_targets = interv_targets[1:]

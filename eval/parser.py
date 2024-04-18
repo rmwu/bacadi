@@ -39,7 +39,7 @@ def make_evaluation_parser():
     parser.add_argument("--simulator", default="synthetic", choices=["synthetic", "sergio"], help="what simulator to use. either our own synthetic or sergio for GRN")
     parser.add_argument("--sergio_k_lower_lim", default=1, type=int, help="sergio simulator. k=unif[1,upper_lim]")
     parser.add_argument("--sergio_k_upper_lim", default=5, type=int, help="sergio simulator. k=unif[1,upper_lim]")
-    parser.add_argument("--sergio_hill", default=2, type=int, help="sergio simulator")
+    parser.add_argument("--sergio_hill", default=2, type=float, help="sergio simulator")
     parser.add_argument("--sergio_cell_types", default=10, type=int, help="sergio simulator")
     parser.add_argument("--sergio_decay", default=0.8, type=float, help="sergio simulator")
     parser.add_argument("--sergio_noise_params", default=1.0, type=float, help="sergio simulator")
@@ -76,7 +76,7 @@ def make_evaluation_parser():
     parser.add_argument("--intervention_noise", type=float, default=0.5, help="the noise of the interventions in case of gaussian")
     parser.add_argument("--interv_prior_mean", type=float, default=0., help="prior mean for inferring interv. mean")
     parser.add_argument("--interv_prior_std", type=float, default=10., help="prior std for inferring interv mean")
-    
+
     parser.add_argument("--n_posterior_g_samples", type=int, default=100, help="number of ground truth graph samples")
 
     # inference model
@@ -112,7 +112,7 @@ def make_evaluation_parser():
     parser.add_argument("--sobolevgauss_init_sig_param", type=float, default=1, help="Sobolev basis")
     parser.add_argument("--sobolevgauss_mean_param", type=float, default=0.0, help="Sobolev basis")
     parser.add_argument("--sobolevgauss_init_param", type=str, default="uniform", help="fully-connected NN Gaussian")
-    
+
 
     '''
     #
@@ -136,30 +136,30 @@ def make_evaluation_parser():
 
     parser.add_argument("--bacadi_bge_alpha_mu", type=float, default=1.0, help="BGe")
     parser.add_argument("--bacadi_bge_alpha_lambd_add", type=float, default=2.0, help="BGe")
-    
+
     parser.add_argument("--bacadi_sobolevgauss_n_exp", type=int, default=10, help="Sobolev basis")
     parser.add_argument("--bacadi_sobolevgauss_obs_noise", type=float, default=0.1, help="Sobolev basis")
     parser.add_argument("--bacadi_sobolevgauss_sig_param", type=float, default=1.0, help="Sobolev basis")
     parser.add_argument("--bacadi_sobolevgauss_init_sig_param", type=float, default=0.1, help="Sobolev basis")
     parser.add_argument("--bacadi_sobolevgauss_mean_param", type=float, default=0.0, help="Sobolev basis")
     parser.add_argument("--bacadi_sobolevgauss_init_param", type=str, default="normal", help="fully-connected NN Gaussian")
-    
+
     # optimizer
     parser.add_argument("--bacadi_optimizer",  default="rmsprop", choices=["gd", "momentum", "adagrad", "adam", "rmsprop"], help="optimizer for bacadi")
     parser.add_argument("--bacadi_optimizer_stepsize",  type=float, default=0.005, help="optimizer stepsize for bacadi")
 
     parser.add_argument("--model_seed", type=int, default=42, help="random seed for inference")
-    
+
     parser.add_argument("--interv_data", action="store_true", help="if True, use interventional data instead of observational")
-        
+
     parser.add_argument("--bacadi_interv_per_env", type=int, default=0, help="assume a certain number of interventions per environment")
     parser.add_argument("--bacadi_lambda_regul", type=float, default=1, help="lambda parameter in the sparsity regulariser for interventions")
-    
+
 
     '''
     #
     # Marginal inference methods
-    # 
+    #
     '''
 
     # bacadi
@@ -175,7 +175,7 @@ def make_evaluation_parser():
     parser.add_argument("--bacadi_kernel", default="frob", choices=["frob"], help="marginal kernel")
     parser.add_argument("--bacadi_interv_kernel", default="frob-interv-add", choices=["frob-interv-add"], help="marginal kernel")
     parser.add_argument("--bacadi_grad_estimator_z", default="reparam", choices=["score", "reparam"], help="gradient estimator for z in marginal inference")
-    
+
     parser.add_argument("--bacadi_alpha_linear", type=float, default=0.01, help="alpha linear default")
     parser.add_argument("--bacadi_beta_linear", type=float, default=1.0, help="beta linear default")
     parser.add_argument("--bacadi_tau_linear", type=float, default=1.0, help="tau linear default")
@@ -200,7 +200,7 @@ def make_evaluation_parser():
     '''
     #
     # Joint inference methods
-    # 
+    #
     '''
 
     # bacadi
@@ -217,7 +217,7 @@ def make_evaluation_parser():
     parser.add_argument("--joint_bacadi_kernel", default="frob-joint-add", choices=["frob-joint-add", "frob-joint-mul"], help="joint kernel")
     parser.add_argument("--joint_bacadi_interv_kernel", default="frob-joint-interv-add", choices=["frob-joint-interv-add"], help="joint kernel")
     parser.add_argument("--joint_bacadi_grad_estimator_z", default="reparam", choices=["score", "reparam"], help="gradient estimator for x in joint inference")
-    
+
     # priors of model
     parser.add_argument("--joint_bacadi_graph_prior", default="er", choices=["er", "sf"], help="graph prior")
     parser.add_argument("--joint_bacadi_graph_prior_edges_per_node", type=int, default=2, help="parameter for prior over graphs")
@@ -264,7 +264,7 @@ def make_evaluation_parser():
                         help='number of meta gradient steps')
     parser.add_argument('--dcdi_normalize_data', action="store_true",
                         help='(x - mu) / std')
-    
+
     # model
     parser.add_argument('--dcdi_model', type=str, default='DCDI-G',
                         help='model class (DCDI-G or DCDI-DSF)')
@@ -337,7 +337,7 @@ def make_evaluation_parser():
     parser.add_argument('--dcdi_plot_density', action="store_true",
                         help='Plot density (only implemented for 2 vars)')
     parser.add_argument("--dcdi_callback_every", type=int, default=1000, help="callback after every `n` steps")
-    
+
     # device and numerical precision
     parser.add_argument('--dcdi_gpu', action="store_true",
                         help="Use GPU")
@@ -346,10 +346,10 @@ def make_evaluation_parser():
 
     parser.add_argument('--dcdi_save_to_files', action="store_true",
                         help="if yes, store to pkl and files")
-    
+
     ## JCI and others
     parser.add_argument("--skip_jci", action="store_true", help="if True, skip jci")
-    
+
     parser.add_argument('--jci_indep_test_alpha', type=float, default=1e-2,
                         help='Cutoff value for independence tests')
     parser.add_argument('--jci_indep_test', type=str, default="gaussCItest",
@@ -358,11 +358,11 @@ def make_evaluation_parser():
                         help='(x - mu) / std')
     parser.add_argument('--jci_max_cond_set', type=int, default=None,
                         help='max size of cond. set for jci_pc')
-    
+
 
     ##
     parser.add_argument("--skip_igsp", action="store_true", help="if True, skip igsp")
-    
+
     parser.add_argument('--igsp_indep_test_alpha', type=float, default=1e-3,
                         help='Threshold for conditional indep tests')
     parser.add_argument('--igsp_indep_test_alpha_inv', type=float, default=1e-3,
@@ -372,5 +372,5 @@ def make_evaluation_parser():
                         (gaussian, hsic, kci)')
     parser.add_argument('--igsp_normalize_data', action="store_true",
                         help='(x - mu) / std')
-    
+
     return parser
