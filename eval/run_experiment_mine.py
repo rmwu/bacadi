@@ -3,6 +3,7 @@ import sys
 import csv
 import json
 import time
+from collections import defaultdict
 
 from tqdm import tqdm
 from util import Logger, NumpyArrayEncoder
@@ -51,6 +52,10 @@ def read_csv(fp, delimiter=','):
 
 
 def make_target(fp_data, fp_graph, fp_interv):
+    """
+    Subsample to 200 observational, 20 per interventional context, as per
+    the paper
+    """
     x_interv_data = np.load(fp_data)
     graph = np.load(fp_graph)
 
@@ -73,7 +78,25 @@ def make_target(fp_data, fp_graph, fp_interv):
         for node in regime:
             interv_targets[idx, node] = 1
     # expand to n_obs
-    envs = np.array([regime_to_idx[r] for r in regimes])
+    envs = [regime_to_idx[r] for r in regimes]
+
+    # sampling!
+    n_obs = 200
+    n_int = 20
+    idxs_to_keep = []
+    env_to_idx = defaultdict(int)
+    for idx, env in enumerate(envs):
+        if env == 0:
+            if env_to_idx[env] < n_obs:
+                env_to_idx[env] += 1
+                idxs_to_keep.append(idx)
+        else:
+            if env_to_idx[env] < n_int:
+                env_to_idx[env] += 1
+                idxs_to_keep.append(idx)
+
+    envs = np.array([envs[i] for i in idxs_to_keep])
+    x_interv_data = x_interv_data[idxs_to_keep, :]
 
     # bacadi.fit() only requires
     # - target.x_interv_data
@@ -162,23 +185,21 @@ if __name__ == '__main__':
     args.joint_bacadi_graph_prior = graph_prior
     args.joint = True
 
-    fp = "/data/rsg/chemistry/rmwu/src/sandbox/causal-target/data/test_360.csv"
+    fp = "/data/rsg/chemistry/rmwu/src/sandbox/causal-target/data/test_180.csv"
     items_to_load = read_csv(fp)
 
     # save results here
     exp_root = "/data/scratch/rmwu/cache/causal_results/bacadi"
     # >>> uncomment desired setting
-    #items_to_load = items_to_load[0:100]
-    #items_to_load = items_to_load[100:200]
-    #items_to_load = items_to_load[200:300]
-    items_to_load = items_to_load[300:]
-    #items_to_load = items_to_load[::-1]
+    items_to_load = items_to_load[0:50]
+    #items_to_load = items_to_load[50:100]
+    #items_to_load = items_to_load[100:150]
+    #items_to_load = items_to_load[150:]
+    items_to_load = items_to_load[::-1]
     # <<<
     # iterate through our test set
     for item in tqdm(items_to_load):
         if item["split"] != "test":
-            continue
-        if "p20" in item["fp_data"]:  # prioritize p10
             continue
         # load data and filter
         fp_data = item["fp_data"]
